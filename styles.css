@@ -168,7 +168,7 @@ button {
 
 .hero {
   --hero-exit: 0;
-  --hero-transition-space: clamp(190px, 25vh, 340px);
+  --hero-transition-space: clamp(110px, 16vh, 220px);
   position: relative;
   min-height: calc(100svh + var(--hero-transition-space));
   overflow: hidden;
@@ -183,7 +183,7 @@ button {
   right: 0;
   bottom: 0;
   left: 0;
-  height: calc(var(--hero-transition-space) + 34vh);
+  height: calc(var(--hero-transition-space) + 28vh);
   background: linear-gradient(
     180deg,
     transparent 0%,
@@ -518,7 +518,7 @@ button {
   position: relative;
   z-index: 2;
   margin-top: 0;
-  padding: 140px var(--page-x) 70px;
+  padding: 96px var(--page-x) 70px;
   overflow: clip;
   background: var(--bg);
   color: var(--text);
@@ -1491,11 +1491,26 @@ button {
   padding: clamp(12px, 2vw, 32px);
 }
 
-.dialog-media video {
+.dialog-media video,
+.dialog-media iframe {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.dialog-media video {
   object-fit: contain;
+}
+
+.dialog-media iframe {
+  border: 0;
+  background: #000;
+  aspect-ratio: 16 / 9;
+}
+
+.dialog-media iframe[hidden],
+.dialog-media video[hidden] {
+  display: none;
 }
 
 .video-error {
@@ -1648,8 +1663,8 @@ button {
   }
 
   .hero {
-    --hero-transition-space: 180px;
-    min-height: calc(990px + var(--hero-transition-space));
+    --hero-transition-space: 110px;
+    min-height: calc(900px + var(--hero-transition-space));
   }
 
   .hero-glass {
@@ -1705,7 +1720,7 @@ button {
 
   .hero-content {
     right: var(--page-x);
-    bottom: calc(var(--hero-transition-space) + 62px);
+    bottom: calc(var(--hero-transition-space) + 48px);
     left: var(--page-x);
     display: block;
   }
@@ -1735,7 +1750,7 @@ button {
   }
 
   .works-section {
-    padding-top: 100px;
+    padding-top: 78px;
     padding-right: var(--page-x);
     padding-bottom: 52px;
     padding-left: var(--page-x);

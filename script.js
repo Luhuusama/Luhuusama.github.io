@@ -18,6 +18,7 @@ const iridescenceContainer = document.querySelector("#hero-iridescence");
 const projectItems = [...document.querySelectorAll(".project-item")];
 const dialog = document.querySelector(".project-dialog");
 const dialogVideo = document.querySelector("#dialog-video");
+const dialogEmbed = document.querySelector("#dialog-embed");
 const dialogTitle = document.querySelector("#dialog-title");
 const dialogCategory = document.querySelector("#dialog-category");
 const dialogCount = document.querySelector("#dialog-count");
@@ -375,28 +376,54 @@ const pausePreview = (item) => {
   if (video) video.pause();
 };
 
+const getBilibiliEmbedUrl = (url) => {
+  const match = url.match(/video\/(BV[a-zA-Z0-9]+)/);
+  if (!match) return url;
+  return `https://player.bilibili.com/player.html?bvid=${match[1]}&autoplay=1&high_quality=1`;
+};
+
 const openProject = (item) => {
   const index = projectItems.indexOf(item) + 1;
   projectItems.forEach(pausePreview);
+
   dialogTitle.textContent = item.dataset.project;
   dialogCategory.textContent = item.dataset.category;
   dialogRole.textContent = item.dataset.role;
   dialogServices.textContent = item.dataset.services;
   dialogCount.textContent = `PROJECT ${String(index).padStart(3, "0")} / ${String(projectItems.length).padStart(3, "0")}`;
   videoError.hidden = true;
-  dialogVideo.src = item.dataset.video;
-  dialogVideo.load();
+
+  if (item.dataset.externalUrl) {
+    dialogVideo.pause();
+    dialogVideo.hidden = true;
+    dialogVideo.removeAttribute("src");
+    dialogVideo.load();
+    dialogEmbed.hidden = false;
+    dialogEmbed.src = getBilibiliEmbedUrl(item.dataset.externalUrl);
+  } else {
+    dialogEmbed.hidden = true;
+    dialogEmbed.removeAttribute("src");
+    dialogVideo.hidden = false;
+    dialogVideo.src = item.dataset.video;
+    dialogVideo.load();
+  }
+
   dialog.showModal();
   document.body.classList.add("dialog-open");
-  dialogVideo.play().catch(() => {
-    dialogVideo.controls = true;
-  });
+  if (!item.dataset.externalUrl) {
+    dialogVideo.play().catch(() => {
+      dialogVideo.controls = true;
+    });
+  }
 };
 
 const closeProject = () => {
   dialogVideo.pause();
   dialogVideo.removeAttribute("src");
   dialogVideo.load();
+  dialogVideo.hidden = false;
+  dialogEmbed.removeAttribute("src");
+  dialogEmbed.hidden = true;
   dialog.close();
   document.body.classList.remove("dialog-open");
 };

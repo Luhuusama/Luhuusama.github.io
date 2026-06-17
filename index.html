@@ -249,6 +249,14 @@
       </div>
       <div class="dialog-media">
         <video id="dialog-video" controls playsinline preload="metadata"></video>
+        <iframe
+          id="dialog-embed"
+          title="站内嵌入视频播放器"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowfullscreen
+          referrerpolicy="strict-origin-when-cross-origin"
+          hidden
+        ></iframe>
         <p class="video-error" role="status" hidden>当前浏览器无法播放此视频格式，请尝试使用 Chrome、Edge 或 Safari。</p>
       </div>
       <div class="dialog-footer">

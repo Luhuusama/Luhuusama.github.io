@@ -313,7 +313,7 @@ const createProjectMedia = (item, index) => {
   media.className = "project-media";
   media.setAttribute("aria-hidden", "true");
 
-  const coverSource = item.dataset.video
+  const coverSource = item.dataset.cover || item.dataset.video
     .replace(/\.[^.]+$/, ".jpg")
     .replace(/_web\.jpg$/i, ".jpg");
   cover.className = "project-cover";

@@ -199,46 +199,138 @@ initIridescence();
 if (!reducedMotion.matches) startIridescence();
 
 if (c4dStage) {
-  const mobileTargets = [
-    [18, 20], [12, 39], [14, 61], [20, 81],
-    [82, 16], [88, 34], [84, 52], [88, 70], [80, 86]
-  ];
-  const stackedStarts = [
-    [45.8, 48.2, -7], [49.4, 45.9, 3], [43.6, 52.5, -4],
-    [54.8, 51.9, 5], [51.6, 47.6, -3], [56.1, 48.7, 6],
-    [47.4, 54.8, -5], [45.5, 50.7, 4], [51.3, 50.4, 0]
-  ];
   let stageFrame = 0;
+  let bloomValue = reducedMotion.matches ? 1 : 0;
+  let bloomFrom = bloomValue;
+  let bloomTo = bloomValue;
+  let bloomAnimationStart = performance.now();
+  let bloomTarget = bloomValue;
+  let copyValue = reducedMotion.matches ? 1 : 0;
+  let copyFrom = copyValue;
+  let copyTo = copyValue;
+  let copyAnimationStart = performance.now();
+  let copyTarget = copyValue;
+  let copyDelayStart = null;
+  let rotationStartTime = null;
+  let rotationOffset = 0;
+  let lastStageScrollY = window.scrollY;
+  const bloomDuration = 4000;
+  const copyDelay = 0;
+  const copyDuration = 1000;
+  const easeOutCubic = (value) => 1 - Math.pow(1 - value, 3);
+  const easeInOutSine = (value) => -(Math.cos(Math.PI * value) - 1) / 2;
+  const clamp01 = (value) => Math.min(1, Math.max(0, value));
 
   const updateC4dStage = () => {
     stageFrame = 0;
+    const now = performance.now();
     const rect = c4dStage.getBoundingClientRect();
-    const travel = Math.max(1, rect.height - window.innerHeight);
-    const rawProgress = Math.min(1, Math.max(0, -rect.top / travel));
-    const progress = reducedMotion.matches ? 1 : rawProgress;
-    const eased = 1 - Math.pow(1 - progress, 3);
+    const hasReachedTrigger = rect.top < window.innerHeight * 1.35 && rect.bottom > 0;
+    const isStageVisible = rect.bottom > 0 && rect.top < window.innerHeight;
+    const isStageNearViewport = rect.bottom > -window.innerHeight * 0.72 && rect.top < window.innerHeight * 1.45;
+    const scrollDelta = window.scrollY - lastStageScrollY;
+    const isScrollingUp = scrollDelta < -2 && isStageNearViewport;
+    let nextBloomTarget = bloomTarget;
+    if (reducedMotion.matches) {
+      nextBloomTarget = 1;
+    } else if (isScrollingUp) {
+      nextBloomTarget = 0;
+    } else if (hasReachedTrigger) {
+      nextBloomTarget = 1;
+    } else if (!isStageVisible && rect.top >= window.innerHeight) {
+      nextBloomTarget = 0;
+    }
+    lastStageScrollY = window.scrollY;
+
+    if (!reducedMotion.matches && nextBloomTarget !== bloomTarget) {
+      if (rotationStartTime !== null) {
+        rotationOffset += (now - rotationStartTime) / 1000 * 2.1;
+        rotationStartTime = null;
+      }
+      bloomFrom = bloomValue;
+      bloomTo = nextBloomTarget;
+      bloomTarget = nextBloomTarget;
+      bloomAnimationStart = now;
+      copyDelayStart = null;
+    }
+
+    const bloomDistance = Math.abs(bloomTo - bloomFrom);
+    const bloomElapsed = now - bloomAnimationStart;
+    const bloomRaw = bloomDistance === 0
+      ? 1
+      : clamp01(bloomElapsed / Math.max(1, bloomDuration * bloomDistance));
+    bloomValue = reducedMotion.matches
+      ? 1
+      : bloomFrom + (bloomTo - bloomFrom) * easeInOutSine(bloomRaw);
+
+    if (!reducedMotion.matches && bloomTarget === 1 && bloomRaw === 1 && rotationStartTime === null) {
+      rotationStartTime = now;
+    }
+
+    const copyRevealReady = reducedMotion.matches || (bloomTarget === 1 && bloomValue >= 0.5);
+    const nextCopyTarget = copyRevealReady ? 1 : 0;
+    if (!reducedMotion.matches && nextCopyTarget === 1 && copyDelayStart === null) {
+      copyDelayStart = now;
+    }
+    const delayedCopyTarget = reducedMotion.matches
+      ? 1
+      : nextCopyTarget === 1 && copyDelayStart !== null && now - copyDelayStart >= copyDelay ? 1 : 0;
+    if (!reducedMotion.matches && delayedCopyTarget !== copyTarget) {
+      copyFrom = copyValue;
+      copyTo = delayedCopyTarget;
+      copyTarget = delayedCopyTarget;
+      copyAnimationStart = now;
+    }
+    const copyDistance = Math.abs(copyTo - copyFrom);
+    const copyElapsed = now - copyAnimationStart;
+    const copyRaw = copyDistance === 0
+      ? 1
+      : clamp01(copyElapsed / Math.max(1, copyDuration * copyDistance));
+    copyValue = reducedMotion.matches
+      ? 1
+      : copyFrom + (copyTo - copyFrom) * easeInOutSine(copyRaw);
+
+    const enterProgress = bloomValue;
     const compact = window.innerWidth <= 767;
+    const orbitRadiusPx = Math.min(window.innerWidth, window.innerHeight) * (compact ? 0.34 : 0.42);
+    const slowRotation = reducedMotion.matches
+      ? 0
+      : rotationOffset + (rotationStartTime === null ? 0 : (now - rotationStartTime) / 1000 * 2.1);
+    const unfoldRotation = enterProgress * 18;
 
     c4dIcons.forEach((icon, index) => {
-      const target = compact
-        ? mobileTargets[index]
-        : [Number(icon.dataset.x), Number(icon.dataset.y)];
-      const [startX, startY, startRotate = 0] = stackedStarts[index] || [50, 50, 0];
-      const currentX = startX + (target[0] - startX) * eased;
-      const currentY = startY + (target[1] - startY) * eased;
-      const currentRotate = startRotate * (1 - eased);
-      icon.style.setProperty("--node-left", `${currentX.toFixed(3)}%`);
-      icon.style.setProperty("--node-top", `${currentY.toFixed(3)}%`);
+      const baseAngle = -90 + index * (360 / Math.max(c4dIcons.length, 1));
+      const petalDelay = index * 0.018;
+      const itemProgress = reducedMotion.matches
+        ? 1
+        : easeInOutSine(clamp01((enterProgress - petalDelay) / 0.82));
+      const radiusProgress = easeInOutSine(itemProgress);
+      const spiralTurns = (1 - itemProgress) * (compact ? 230 : 285);
+      const currentAngle = baseAngle - spiralTurns + unfoldRotation + slowRotation;
+      const angle = currentAngle * Math.PI / 180;
+      const currentX = Math.cos(angle) * orbitRadiusPx * radiusProgress;
+      const currentY = Math.sin(angle) * orbitRadiusPx * radiusProgress;
+      const currentRotate = 0;
+      const enterScale = 0.64 + itemProgress * 0.36;
+      const currentOpacity = reducedMotion.matches
+        ? 1
+        : clamp01((enterProgress - 0.25 - petalDelay) / 0.4);
+      icon.style.setProperty("--icon-x", `${currentX.toFixed(3)}px`);
+      icon.style.setProperty("--icon-y", `${currentY.toFixed(3)}px`);
       icon.style.setProperty("--icon-rotate", `${currentRotate.toFixed(3)}deg`);
+      icon.style.setProperty("--icon-scale", enterScale.toFixed(3));
+      icon.style.setProperty("--icon-opacity", currentOpacity.toFixed(3));
       icon.style.zIndex = String(10 + index);
-      icon.style.opacity = "1";
     });
 
-    const copyOpacity = reducedMotion.matches
-      ? 1
-      : Math.min(1, Math.max(0, (progress - 0.22) / 0.38));
-    c4dStage.style.setProperty("--stage-copy-opacity", copyOpacity.toFixed(3));
-    c4dStage.style.setProperty("--stage-copy-shift", `${((1 - copyOpacity) * 24).toFixed(2)}px`);
+    c4dStage.style.setProperty("--stage-copy-opacity", copyValue.toFixed(3));
+    c4dStage.style.setProperty("--stage-copy-shift", `${((1 - copyValue) * 24).toFixed(2)}px`);
+
+    const isBloomAnimating = bloomRaw < 1 || copyRaw < 1 || (bloomTarget === 1 && bloomValue >= 0.999);
+    const shouldAnimate = isStageNearViewport && isBloomAnimating;
+    if (!reducedMotion.matches && shouldAnimate) {
+      stageFrame = window.requestAnimationFrame(updateC4dStage);
+    }
   };
 
   const requestC4dStageUpdate = () => {
@@ -327,7 +419,7 @@ const createProjectMedia = (item, index) => {
   video.playsInline = true;
   video.preload = "metadata";
   video.tabIndex = -1;
-  video.dataset.src = item.dataset.video;
+  video.dataset.src = getProjectVideoSource(item);
 
   label.className = "project-media-label";
   label.textContent = String(index + 1).padStart(3, "0");
@@ -360,6 +452,18 @@ const loadProjectMedia = (item) => {
   if (!video || video.src) return;
   video.src = video.dataset.src;
   video.load();
+};
+
+const getProjectVideoSource = (item) => {
+  const isLocalPreview = window.location.protocol === "file:"
+    || window.location.hostname === "localhost"
+    || window.location.hostname === "127.0.0.1";
+
+  if (item.dataset.localVideo && isLocalPreview) {
+    return item.dataset.localVideo;
+  }
+
+  return item.dataset.video;
 };
 
 const playPreview = (item) => {
@@ -404,7 +508,7 @@ const openProject = (item) => {
     dialogEmbed.hidden = true;
     dialogEmbed.removeAttribute("src");
     dialogVideo.hidden = false;
-    dialogVideo.src = item.dataset.video;
+    dialogVideo.src = getProjectVideoSource(item);
     dialogVideo.load();
   }
 
